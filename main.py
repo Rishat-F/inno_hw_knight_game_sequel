@@ -322,7 +322,7 @@ def game() -> None:
     default_sword = Sword(DEFAULT_SWORD_ATTACK)
     hero = Hero(HERO_START_HP, default_sword)
     global monster_counter
-    while hero.hp > 0 and monster_counter < 10:
+    while hero.hp > 0 and monster_counter < MONSTERS_TO_WIN:
         print_hero_stats(hero, monster_counter)
         meeting = GameFactory(hero, monster_counter).next_meeting()
         if isinstance(meeting, Apple):
@@ -331,16 +331,16 @@ def game() -> None:
             print(
                 f"\nВы нашли яблоко и съели его.\n"
                 f"Кол-во единиц здоровья увеличилось на {meeting.hp}."
-                )
+            )
             input("\n\tНажмите Enter\n")
         elif isinstance(meeting, Weapon):
             print(
                 f"\nВы нашли {meeting.type}, который дает {meeting.attack} ед. урона."
-                )
+            )
             choice = input(
                 f"\n\tВведите 0, чтобы пройти мимо.\n"
                 f"\tВведите 1, чтобы подобрать новый {meeting.type}.\n"
-                )
+            )
             while choice not in ("0", "1"):
                 print_hero_stats(hero, monster_counter)
                 choice = input(
@@ -348,7 +348,7 @@ def game() -> None:
                     f"\n\tНекорректный ввод.\n"
                     f"\n\tВведите 0, чтобы пройти мимо.\n"
                     f"\tВведите 1, чтобы подобрать новый {meeting.type}.\n"
-                    )
+                )
             if choice == "1":
                 hero.pick_up(meeting)
         elif isinstance(meeting, Quiver):
@@ -356,7 +356,7 @@ def game() -> None:
             choice = input(
                 f"\n\tВведите 0, чтобы пройти мимо.\n"
                 f"\tВведите 1, чтобы подобрать новый {meeting.type}.\n"
-                )
+            )
             while choice not in ("0", "1"):
                 print_hero_stats(hero, monster_counter)
                 choice = input(
@@ -364,7 +364,7 @@ def game() -> None:
                     f"\n\tНекорректный ввод.\n"
                     f"\n\tВведите 0, чтобы пройти мимо.\n"
                     f"\tВведите 1, чтобы подобрать новый {meeting.type}.\n"
-                    )
+                )
             if choice == "1":
                 hero.pick_up(meeting)
         elif isinstance(meeting, Totem):
@@ -372,7 +372,7 @@ def game() -> None:
             choice = input(
                 f"\n\tВведите 0, чтобы пройти мимо.\n"
                 f"\tВведите 1, чтобы подобрать новый {meeting.type}.\n"
-                )
+            )
             while choice not in ("0", "1"):
                 print_hero_stats(hero, monster_counter)
                 choice = input(
@@ -380,7 +380,7 @@ def game() -> None:
                     f"\n\tНекорректный ввод.\n"
                     f"\n\tВведите 0, чтобы пройти мимо.\n"
                     f"\tВведите 1, чтобы подобрать новый {meeting.type}.\n"
-                    )
+                )
             if choice == "1":
                 hero.pick_up(meeting)
         elif isinstance(meeting, Monster):
@@ -388,14 +388,14 @@ def game() -> None:
             print(
                 f"\nБОЙ! На вас напал монстр-{meeting.type} с {meeting.hp} ед. "
                 f"здоровья и с атакой в {meeting.attack} ед. урона."
-                )
+            )
             choice = None
             while hero.hp > 0 and meeting.hp > 0 and choice != "0":
                 choice = input(
                     "\n\tВведите 0, чтобы убежать.\n"
                     "\tВведите 1, чтобы атаковать чудовище текущим оружием.\n"
                     "\tВведите 2, чтобы сменить оружие перед атакой.\n"
-                    )
+                )
                 while choice not in ("0", "1", "2"):
                     print_battle_stats(hero, meeting, monster_counter)
                     choice = input(
@@ -404,7 +404,7 @@ def game() -> None:
                         f"\n\tНекорректный ввод.\n\tВведите 0, чтобы убежать.\n"
                         f"\tВведите 1, чтобы атаковать чудовище текущим оружием.\n"
                         f"\tВведите 2, чтобы сменить оружие перед атакой.\n"
-                        )
+                    )
                 if choice == "2":
                     print_battle_stats(hero, meeting, monster_counter)
                     hero.change_weapon()
