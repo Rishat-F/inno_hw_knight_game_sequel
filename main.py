@@ -1,6 +1,10 @@
 import random
 import os
+from copy import deepcopy
 
+
+monster_counter = 0
+MONSTERS_TO_WIN = 10
 
 PROLOGUE = "\n\tДобро пожаловать в сказочную игру \"Герой и Монстры\"!\n\n" \
            "\tКоролевству угрожает нападение со стороны 10 монстров!\n" \
@@ -10,15 +14,32 @@ EPILOGUE = "\n\tМного смельчаков пало в битве с мон
            "\tВ итоге Королевство было разрушено чудовищами...\n\n" \
            "\tВы проиграли!\n\n" \
            "Игра окончена."
-monster_counter = 0
-MONSTERS_TO_WIN = 10
-MELEE_TYPE = "melee"
-RANGE_TYPE = "range"
-MAGE_TYPE = "mage"
+
+MELEE_TYPE = "воин"
+RANGE_TYPE = "лучник"
+MAGE_TYPE = "маг"
 TYPES = {"1": MELEE_TYPE, "2": RANGE_TYPE, "3": MAGE_TYPE}
-HERO_START_HP = 20
+
 EVATION_CHANCE = 50
-DEFAULT_ATTACK = 2
+
+HERO_START_HP = 20
+DEFAULT_SWORD_ATTACK = 8
+
+MONSTER_MIN_HP = 5
+MONSTER_MAX_HP = 12
+
+MONSTER_MIN_ATTACK = 5
+MONSTER_MAX_ATTACK = 12
+
+MIN_ATTACK = 6
+MAX_ATTACK = 12
+ATTACK_MULTIPLIER = 2
+
+APPLE_MIN_HP = 6
+APPLE_MAX_HP = 10
+
+QUIVER_MIN_ARROWS = 1
+QUIVER_MAX_ARROWS = 3
 
 
 def greeting():
@@ -38,7 +59,7 @@ def clear_terminal() -> None:
     os.system("cls" if os.name == "nt" else "clear")
 
 
-def print_hero_stats(hero) -> None:
+def print_hero_stats(hero, monster_counter) -> None:
     """Print stats and game steps in pretty view."""
     clear_terminal()
     print(
@@ -50,9 +71,9 @@ def print_hero_stats(hero) -> None:
     )
 
 
-def print_battle_stats(hero, monster) -> None:
+def print_battle_stats(hero, monster, monster_counter) -> None:
     """Print stats and game steps in pretty view."""
-    print_hero_stats(hero)
+    print_hero_stats(hero, monster_counter)
     if monster.hp > 0:
         print(
             f"Монстр:\n"
@@ -60,14 +81,24 @@ def print_battle_stats(hero, monster) -> None:
         )
 
 
-def random_meeting():
-    meeting = random.choice([Sword, Bow, Book, Quiver, Apple, Monster])
+def random_meeting(hero, monster_counter):
+    meeting = random.choices([Sword, Bow, Book, Quiver, Apple, Totem, Monster], [1, 1, 1, 1, 3, 1, 5])[0]
     if issubclass(meeting, Weapon):
-        return meeting(random.randint(6, 15))
-    elif issubclass(meeting, Thing):
-        return meeting(random.randint(3, 6))
+        if hero.type == meeting.attack_type:
+            return meeting(random.randint(MIN_ATTACK, MAX_ATTACK * ATTACK_MULTIPLIER))
+        else:
+            return meeting(random.randint(MIN_ATTACK, MAX_ATTACK))
+    elif meeting is Apple:
+        return meeting(random.randint(APPLE_MIN_HP, APPLE_MAX_HP))
+    elif meeting is Quiver:
+        return meeting(random.randint(QUIVER_MIN_ARROWS, QUIVER_MAX_ARROWS))
+    elif meeting is Totem:
+        return meeting(deepcopy(hero), deepcopy(monster_counter))
     elif meeting is Monster:
-        return meeting(random.randint(5, 12), random.randint(5, 12))
+        return meeting(
+            random.randint(MONSTER_MIN_HP, MONSTER_MAX_HP),
+            random.randint(MONSTER_MIN_ATTACK, MONSTER_MAX_ATTACK)
+        )
 
 
 class Unit:
@@ -81,7 +112,7 @@ class Unit:
 
 class AbleToEvade:
 
-    chance = EVATION_CHANCE
+    evation_chance = EVATION_CHANCE
 
     def _can_evade_enemy_hit(self, enemy):
         if isinstance(self, Monster) and isinstance(enemy, Hero) and self.type == enemy.weapon.attack_type:
@@ -93,7 +124,7 @@ class AbleToEvade:
 
     def evade_hit(self, enemy):
         if self._can_evade_enemy_hit(enemy):
-            return random.choices([True, False], [self.chance, 100 - self.chance])[0]
+            return random.choices([True, False], [self.evation_chance, 100 - self.evation_chance])[0]
         else:
             return False
 
@@ -106,7 +137,7 @@ class AbleToAttack:
     def attack_enemy(self, enemy):
         if isinstance(enemy, AbleToEvade):
             if enemy.evade_hit(self):
-                print(f"{str(enemy)} увернулся от удара")
+                print(f"\n\t{str(enemy)} увернулся от удара")
                 input("\n\tНажмите Enter\n")
             else:
                 enemy.hp -= self.attack
@@ -265,99 +296,137 @@ class Apple(Thing):
 
 class Totem(Thing):
 
-    def __init__(self, hero):
+    def __init__(self, hero, monster_counter):
         super().__init__()
         self.hero = hero
         self.monster_counter = monster_counter
 
     def __repr__(self):
-        return f"Сохранение с {self.hero.hp} hp"
+        return f"cохранение с {self.hero.hp} hp"
 
 
 def game() -> None:
-    default_sword = Sword(DEFAULT_ATTACK)
+    default_sword = Sword(DEFAULT_SWORD_ATTACK)
     hero = Hero(HERO_START_HP, default_sword)
     global monster_counter
     while hero.hp > 0 and monster_counter < 10:
-        print_hero_stats(hero)
-        meeting = random_meeting()  # тут нужна фабрика, которая будет выдавать рандомно объекты вещей, оружия или монстров
+        print_hero_stats(hero, monster_counter)
+        meeting = random_meeting(hero, monster_counter)  # тут нужна фабрика, которая будет выдавать рандомно объекты вещей, оружия или монстров
         if isinstance(meeting, Apple):
             hero.hp += meeting.hp
-            print_hero_stats(hero)
+            print_hero_stats(hero, monster_counter)
             print(
                 f"\nВы нашли яблоко и съели его.\n"
                 f"Кол-во единиц здоровья увеличилось на {meeting.hp}."
-            )
+                )
             input("\n\tНажмите Enter\n")
         elif isinstance(meeting, Weapon):
-            print(f"\nВы нашли {meeting.type}, который дает {meeting.attack} ед. урона.")
-            choice = input(
-                f"\n\tВведите 1, чтобы подобрать новый {meeting.type}.\n"
-                f"\tВведите 2, чтобы пройти мимо.\n"
-            )
-            while choice not in ("1", "2"):
-                choice = input(
-                    f"\nНекорректный ввод.\n"
-                    f"\tВведите 1, чтобы подобрать новый {meeting.type}.\n"
-                    f"\tВведите 2, чтобы пройти мимо.\n"
+            print(
+                f"\nВы нашли {meeting.type}, который дает {meeting.attack} ед. урона."
                 )
+            choice = input(
+                f"\n\tВведите 0, чтобы пройти мимо.\n"
+                f"\tВведите 1, чтобы подобрать новый {meeting.type}.\n"
+                )
+            while choice not in ("0", "1"):
+                print_hero_stats(hero, monster_counter)
+                choice = input(
+                    f"\nВы нашли {meeting.type}, который дает {meeting.attack} ед. урона."
+                    f"\n\tНекорректный ввод.\n"
+                    f"\n\tВведите 0, чтобы пройти мимо.\n"
+                    f"\tВведите 1, чтобы подобрать новый {meeting.type}.\n"
+                    )
             if choice == "1":
                 hero.pick_up(meeting)
         elif isinstance(meeting, Quiver):
             print(f"\nВы нашли {meeting.type}, с {meeting.arrows} стрелами.")
             choice = input(
-                f"\n\tВведите 1, чтобы подобрать {meeting.type}.\n"
-                f"\tВведите 2, чтобы пройти мимо.\n"
-            )
-            while choice not in ("1", "2"):
-                choice = input(
-                    f"\nНекорректный ввод.\n"
-                    f"\tВведите 1, чтобы подобрать {meeting.type}.\n"
-                    f"\tВведите 2, чтобы пройти мимо.\n"
+                f"\n\tВведите 0, чтобы пройти мимо.\n"
+                f"\tВведите 1, чтобы подобрать новый {meeting.type}.\n"
                 )
+            while choice not in ("0", "1"):
+                print_hero_stats(hero, monster_counter)
+                choice = input(
+                    f"\nВы нашли {meeting.type}, с {meeting.arrows} стрелами."
+                    f"\n\tНекорректный ввод.\n"
+                    f"\n\tВведите 0, чтобы пройти мимо.\n"
+                    f"\tВведите 1, чтобы подобрать новый {meeting.type}.\n"
+                    )
+            if choice == "1":
+                hero.pick_up(meeting)
+        elif isinstance(meeting, Totem):
+            print(f"\nВы нашли {meeting.type}")
+            choice = input(
+                f"\n\tВведите 0, чтобы пройти мимо.\n"
+                f"\tВведите 1, чтобы подобрать новый {meeting.type}.\n"
+                )
+            while choice not in ("0", "1"):
+                print_hero_stats(hero, monster_counter)
+                choice = input(
+                    f"\nВы нашли {meeting.type}"
+                    f"\n\tНекорректный ввод.\n"
+                    f"\n\tВведите 0, чтобы пройти мимо.\n"
+                    f"\tВведите 1, чтобы подобрать новый {meeting.type}.\n"
+                    )
             if choice == "1":
                 hero.pick_up(meeting)
         elif isinstance(meeting, Monster):
-            print_battle_stats(hero, meeting)
+            print_battle_stats(hero, meeting, monster_counter)
             print(
-                f"\nБОЙ! На вас напало {meeting.type}-чудовище с {meeting.hp} ед. "
+                f"\nБОЙ! На вас напал монстр-{meeting.type} с {meeting.hp} ед. "
                 f"здоровья и с атакой в {meeting.attack} ед. урона."
-            )
+                )
             choice = None
             while hero.hp > 0 and meeting.hp > 0 and choice != "0":
                 choice = input(
                     "\n\tВведите 0, чтобы убежать.\n"
                     "\tВведите 1, чтобы атаковать чудовище текущим оружием.\n"
                     "\tВведите 2, чтобы сменить оружие перед атакой.\n"
-                )
-                while choice not in ("0", "1", "2"):
-                    print_battle_stats(hero, meeting)
-                    choice = input(
-                        "\nНекорректный ввод.\n\tВведите 0, чтобы убежать.\n"
-                        "\tВведите 1, чтобы атаковать чудовище текущим оружием.\n"
-                        "\tВведите 2, чтобы сменить оружие перед атакой.\n"
                     )
+                while choice not in ("0", "1", "2"):
+                    print_battle_stats(hero, meeting, monster_counter)
+                    choice = input(
+                        f"\nБОЙ! На вас напал монстр-{meeting.type} с {meeting.hp} ед. "
+                        f"здоровья и с атакой в {meeting.attack} ед. урона."
+                        f"\n\tНекорректный ввод.\n\tВведите 0, чтобы убежать.\n"
+                        f"\tВведите 1, чтобы атаковать чудовище текущим оружием.\n"
+                        f"\tВведите 2, чтобы сменить оружие перед атакой.\n"
+                        )
                 if choice == "2":
-                    print_battle_stats(hero, meeting)
+                    print_battle_stats(hero, meeting, monster_counter)
                     hero.change_weapon()
-                    print_battle_stats(hero, meeting)
+                    print_battle_stats(hero, meeting, monster_counter)
                     continue
                 elif choice == "1":
+                    print_battle_stats(hero, meeting, monster_counter)
                     meeting.attack_enemy(hero)
+                    print_battle_stats(hero, meeting, monster_counter)
                     hero.attack_enemy(meeting)
-                print_battle_stats(hero, meeting)
+                    print_battle_stats(hero, meeting, monster_counter)
             if hero.hp > 0 and meeting.hp <= 0:
                 monster_counter += 1
                 if monster_counter != 10:
-                    print_hero_stats(hero)
+                    print_hero_stats(hero, monster_counter)
                     print("\nВы одолели чудовище!")
                     input("\n\tНажмите Enter\n")
+            if hero.hp <= 0 and "totem" in hero.backpack:
+                choice = input("\n\tМонстр вас убил. Использовать тотем? [y/n]\n").lower()
+                while choice not in ("y", "n", "yes", "no", "\n", ""):
+                    clear_terminal()
+                    choice = input("\n\tМонстр вас убил. Использовать тотем? [y/n]\n").lower()
+                if choice.startswith("y") or choice in ("\n", ""):
+                    monster_counter = hero.backpack["totem"].monster_counter
+                    hero = hero.backpack["totem"].hero
+                    try:
+                        del hero.backpack["totem"]
+                    except KeyError:
+                        pass
     clear_terminal()
     if hero.hp <= 0:
         print("\n\tМонстр вас убил. ПОРАЖЕНИЕ!\n\nИгра окончена.\n")
     else:
         print(
-            "\n\tПОБЕДА!\nВы одолели 10 чудовищ и спасли "
+            "\n\tПОБЕДА!\n\tВы одолели 10 чудовищ и спасли "
             "Королевство от уничтожения!\n\nИгра окончена.\n"
         )
     quit()
