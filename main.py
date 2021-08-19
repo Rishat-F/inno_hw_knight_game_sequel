@@ -81,24 +81,37 @@ def print_battle_stats(hero, monster, monster_counter) -> None:
         )
 
 
-def random_meeting(hero, monster_counter):
-    meeting = random.choices([Sword, Bow, Book, Quiver, Apple, Totem, Monster], [1, 1, 1, 1, 3, 1, 5])[0]
-    if issubclass(meeting, Weapon):
-        if hero.type == meeting.attack_type:
-            return meeting(random.randint(MIN_ATTACK, MAX_ATTACK * ATTACK_MULTIPLIER))
-        else:
-            return meeting(random.randint(MIN_ATTACK, MAX_ATTACK))
-    elif meeting is Apple:
-        return meeting(random.randint(APPLE_MIN_HP, APPLE_MAX_HP))
-    elif meeting is Quiver:
-        return meeting(random.randint(QUIVER_MIN_ARROWS, QUIVER_MAX_ARROWS))
-    elif meeting is Totem:
-        return meeting(deepcopy(hero), deepcopy(monster_counter))
-    elif meeting is Monster:
-        return meeting(
-            random.randint(MONSTER_MIN_HP, MONSTER_MAX_HP),
-            random.randint(MONSTER_MIN_ATTACK, MONSTER_MAX_ATTACK)
-        )
+class GameFactory:
+
+    def __init__(self, hero, monster_counter):
+        self.hero = hero
+        self.monster_counter = monster_counter
+
+    def next_meeting(self):
+        meeting = random.choices(
+            [Sword, Bow, Book, Quiver, Apple, Totem, Monster],
+            [1, 1, 1, 1, 4, 0.5, 5]
+        )[0]
+        if issubclass(meeting, Weapon):
+            if self.hero.type == meeting.attack_type:
+                return meeting(
+                    random.randint(MIN_ATTACK, MAX_ATTACK * ATTACK_MULTIPLIER)
+                )
+            else:
+                return meeting(random.randint(MIN_ATTACK, MAX_ATTACK))
+        elif meeting is Apple:
+            return meeting(random.randint(APPLE_MIN_HP, APPLE_MAX_HP))
+        elif meeting is Quiver:
+            return meeting(
+                random.randint(QUIVER_MIN_ARROWS, QUIVER_MAX_ARROWS)
+            )
+        elif meeting is Totem:
+            return meeting(deepcopy(self.hero), deepcopy(monster_counter))
+        elif meeting is Monster:
+            return meeting(
+                random.randint(MONSTER_MIN_HP, MONSTER_MAX_HP),
+                random.randint(MONSTER_MIN_ATTACK, MONSTER_MAX_ATTACK)
+            )
 
 
 class Unit:
@@ -311,7 +324,7 @@ def game() -> None:
     global monster_counter
     while hero.hp > 0 and monster_counter < 10:
         print_hero_stats(hero, monster_counter)
-        meeting = random_meeting(hero, monster_counter)  # тут нужна фабрика, которая будет выдавать рандомно объекты вещей, оружия или монстров
+        meeting = GameFactory(hero, monster_counter).next_meeting()
         if isinstance(meeting, Apple):
             hero.hp += meeting.hp
             print_hero_stats(hero, monster_counter)
